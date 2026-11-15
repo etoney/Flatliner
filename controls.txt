@@ -1,0 +1,85 @@
+===============================================================================
+  FLATLINER  //  CONTROLS QUICK REFERENCE
+  Castle Danger Music Company
+===============================================================================
+
+Flatliner is an automatic fader rider. It listens to your vocal and moves a
+virtual fader for you, pushing quiet words up and pulling loud ones down, so
+the performance sits on one flat line: the TARGET.
+
+Tip: double-click a knob to reset it. Double-click the value under a knob to
+type an exact number (e.g. "-18" for the target).
+
+
+-------------------------------------------------------------------------------
+RIDE
+-------------------------------------------------------------------------------
+  RIDE          The fader moves by itself.
+  OFF           The fader is parked at 0 dB and Flatliner does nothing (the
+                OUTPUT trim still works).
+
+
+-------------------------------------------------------------------------------
+THE KNOBS
+-------------------------------------------------------------------------------
+  TARGET        The level the rider aims for (measured as RMS, so it follows
+                how loud the vocal FEELS, not the peaks). Start around -18 dB,
+                then raise or lower it until the vocal sits where you want it
+                in the mix.
+
+  RANGE         The most the fader is allowed to move, up or down. Small
+                (2-4 dB) = a gentle, invisible ride. Large (10-18 dB) =
+                flattens everything, including whispers and shouts.
+
+  SPEED         How fast the fader moves. Low = slow and natural, like a
+                patient engineer. High = locked flat. Cuts always move faster
+                than boosts, like a human hand on a fader.
+
+  GATE          Below this level the fader freezes where it is, so breaths,
+                room noise and the gaps between phrases are not pushed up.
+                If the fader pumps noise up in the pauses, raise the gate.
+
+  LOOKAHEAD     Delays the audio (0-50 ms) while the rider listens to it
+                early, so the fader is already moving when a loud word or a
+                whisper arrives, instead of reacting after it. Flatliner tells
+                your DAW about the delay, and the DAW lines everything up.
+                Set it to 0 (OFF) for live tracking, where you can't have any
+                latency. The LATENCY screen shows what is being reported.
+                Tip: set it once and leave it. Some DAWs only pick up a
+                latency change when you restart playback.
+
+  MUSIC         Needs your backing track routed to Flatliner's SIDECHAIN
+                input. The louder the music gets, the higher the vocal TARGET
+                is pushed (up to +12 dB at 100%), so the vocal rides on top
+                of the mix instead of getting buried. 0% = ignore the music.
+                The MUSIC LINK screen shows whether a sidechain is connected.
+
+  OUTPUT        Final output trim (-12 to +12 dB).
+
+
+-------------------------------------------------------------------------------
+THE SCREENS
+-------------------------------------------------------------------------------
+  THE LINE      A scrolling scope of the last ten seconds.
+                  dim trace    = the vocal as it comes in
+                  bright trace = after the fader (this should be flat)
+                  yellow dashes = TARGET      shaded band = RANGE
+                  grey dashes   = GATE
+  FADER GAUGE   The round gauge in the header. Needle left = cutting,
+                right = boosting, centre = 0 dB.
+  METERS        VOICE in, OUT, and the FADER (cuts hang down in red, boosts
+                climb up in cream), plus a read-out of the fader in dB.
+  PRESETS       Factory presets and your own. Your presets are saved in
+                  macOS:    ~/Library/Application Support/Castle Danger/Flatliner/Presets
+                  Windows:  %APPDATA%\Castle Danger\Flatliner\Presets
+
+
+-------------------------------------------------------------------------------
+GETTING STARTED
+-------------------------------------------------------------------------------
+  1. Put Flatliner on the vocal track, early in the chain (before the
+     compressor and effects, so they get an even signal).
+  2. Pick "Lead Vocal: Natural" and play the loudest and quietest parts.
+  3. Adjust TARGET until the bright trace sits where you want it.
+  4. If it feels too busy, lower RANGE or SPEED. If whispers still get lost,
+     raise RANGE. If it lifts the noise between phrases, raise GATE.

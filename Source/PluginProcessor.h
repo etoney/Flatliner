@@ -2,6 +2,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "FlatlinerEngine.h"
 #include "Presets.h"
+#include "CDLink.h"
 
 class FlatlinerProcessor : public juce::AudioProcessor
 {
@@ -49,8 +50,24 @@ public:
     juce::String getCurrentPresetName() const { return currentPresetName; }
     std::atomic<int> presetVersion { 0 };
 
+    // ---- Castle Danger Link: The Master (on the master bus) hears the whole mix; it reads how much
+    //      this track's level swings and sets TARGET / RANGE / SPEED / GATE for the genre
+    using Link = cdlink::PluginLink<juce::AudioProcessorValueTreeState>;
+    Link& getLink() { return *link; }
+    juce::String getTrackName() const { const juce::ScopedLock sl (nameLock); return trackName; }
+    void updateTrackProperties (const TrackProperties& props) override { const juce::ScopedLock sl (nameLock); trackName = props.name.value_or (juce::String()); }
+    juce::var levelStats() const;   // { p10, p50, p90, floorDb, seconds } of the input, since The Master's last RESET
+
 private:
     void resetToDefaults();
+    std::unique_ptr<Link> link;
+    juce::String trackName;
+    juce::CriticalSection nameLock;
+    // input level, 100 ms RMS windows, as a histogram (0.5 dB steps, -100..0 dBFS)
+    static constexpr int kHistBins = 200;
+    std::array<std::atomic<int>, kHistBins> hist {};
+    std::atomic<bool> histReset { false };
+    double winPow = 0; int winCount = 0, winLen = 4800;
     flat::Engine engine;
     int currentProgram = 0, reportedLatency = -1;
     std::atomic<bool> scConnected { false };

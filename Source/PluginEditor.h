@@ -146,7 +146,7 @@ private:
     juce::Rectangle<int> logoArea, badgeArea, crestArea, meterArea, presetArea, stripeArea, scArea, latArea;
     juce::Image backdrop, logoImage;
     float inMeter = 0, outMeter = 0, flicker = 0;
-    int lastStatusKey = -1;
+    int lastStatusKey = -1, linkTick = 0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FlatlinerEditor)
 };

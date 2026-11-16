@@ -11,6 +11,20 @@ FlatlinerProcessor::FlatlinerProcessor()
                                        .withInput ("Music (Sidechain)", juce::AudioChannelSet::stereo(), false)),
       apvts (*this, nullptr, "Flatliner", createLayout())
 {
+
+    juce::StringArray ids { "target", "range", "speed", "gate", "lookahead", "music", "output", "ride" };
+    link = std::make_unique<Link> ("flatliner", "Flatliner", JucePlugin_VersionString, apvts, ids);
+    link->onSetByMaster = [this] (const juce::StringArray&) { currentPresetName = "Set by The Master"; ++presetVersion; };
+    link->onOtherMessage = [this] (const juce::var& m)
+    {
+        if (m.getProperty ("type", "").toString() == "measure-reset") histReset = true;   // The Master's RESET: listen again
+    };
+    link->extraStatus = [this]
+    {
+        auto v = levelStats();
+        if (auto* o = v.getDynamicObject()) o->setProperty ("track", getTrackName());
+        return v;
+    };
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout FlatlinerProcessor::createLayout()
@@ -85,8 +99,30 @@ void FlatlinerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     }
     scConnected.store (scChs > 0);
 
+    // what comes in: the level histogram The Master reads, and the fingerprint
+    if (histReset.exchange (false)) { for (auto& b : hist) b = 0; winPow = 0; winCount = 0; }
+    winLen = juce::jmax (1, (int) (getSampleRate() > 0 ? getSampleRate() * 0.1 : 4800.0));
+    double inPow = 0;
+    for (int i = 0; i < n; ++i)
+    {
+        double x = 0;
+        for (int c = 0; c < chs; ++c) x += (double) mainBus.getSample (c, i) * mainBus.getSample (c, i);
+        x /= juce::jmax (1, chs);
+        inPow += x; winPow += x;
+        if (++winCount >= winLen)
+        {
+            const double db = 10.0 * std::log10 (std::max (1e-20, winPow / winCount));
+            if (db > -100.0) ++hist[(size_t) juce::jlimit (0, kHistBins - 1, (int) ((db + 100.0) * 2.0))];
+            winPow = 0; winCount = 0;
+        }
+    }
+    inPow /= juce::jmax (1, n);
+
     engine.setParams (currentParams());
     engine.process (mainBus.getArrayOfWritePointers(), chs, scChs > 0 ? scBus.getArrayOfReadPointers() : nullptr, scChs, n);
+    double outPow = 0;
+    for (int c = 0; c < chs; ++c) for (int i = 0; i < n; ++i) outPow += (double) mainBus.getSample (c, i) * mainBus.getSample (c, i);
+    link->env.addPowers (inPow, outPow / juce::jmax (1, chs * n), n);
     if (engine.getLatency() != reportedLatency)
     {
         reportedLatency = engine.getLatency();
@@ -198,6 +234,33 @@ void FlatlinerProcessor::setStateInformation (const void* data, int sizeInBytes)
             apvts.replaceState (vt);
             ++presetVersion;
         }
+}
+
+juce::var FlatlinerProcessor::levelStats() const
+{
+    std::array<int, kHistBins> h {};
+    int total = 0, top = -1;
+    for (int b = 0; b < kHistBins; ++b) { h[(size_t) b] = hist[(size_t) b].load(); total += h[(size_t) b]; if (h[(size_t) b] > 0) top = b; }
+    auto* o = new juce::DynamicObject();
+    auto dbOf = [] (int b) { return -100.0 + (b + 0.5) * 0.5; };
+    // the parts that are singing / playing: within 40 dB of the loudest
+    const int lo = juce::jmax (0, top - 80);
+    int active = 0; for (int b = lo; b <= top && top >= 0; ++b) active += h[(size_t) b];
+    auto pct = [&] (double q, int from, int count)
+    {
+        int need = (int) std::ceil (q * count), acc = 0;
+        for (int b = from; b < kHistBins; ++b) { acc += h[(size_t) b]; if (acc >= std::max (1, need)) return dbOf (b); }
+        return dbOf (top);
+    };
+    o->setProperty ("seconds", active * 0.1);
+    if (active > 0)
+    {
+        o->setProperty ("p10", pct (0.10, lo, active));
+        o->setProperty ("p50", pct (0.50, lo, active));
+        o->setProperty ("p90", pct (0.90, lo, active));
+        o->setProperty ("floorDb", pct (0.05, 0, total));   // the gaps between phrases
+    }
+    return juce::var (o);
 }
 
 juce::AudioProcessorEditor* FlatlinerProcessor::createEditor() { return new FlatlinerEditor (*this); }

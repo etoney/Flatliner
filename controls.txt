@@ -83,3 +83,26 @@ GETTING STARTED
   3. Adjust TARGET until the bright trace sits where you want it.
   4. If it feels too busy, lower RANGE or SPEED. If whispers still get lost,
      raise RANGE. If it lifts the noise between phrases, raise GATE.
+
+
+-------------------------------------------------------------------------------
+LINKED TO THE MASTER
+-------------------------------------------------------------------------------
+  If The Master is on your master bus, Flatliner links to it by itself (the
+  line under the logo says LINKED TO THE MASTER). Nothing to set up.
+
+  Flatliner measures how much the track's level swings (its quiet and loud
+  parts, and the gaps between phrases) from The Master's RESET onwards. In
+  MY PLUGINS mode, The Master finds which track it's on (by track name, or by
+  matching it to The Servant on the same track) and on APPLY sets:
+    TARGET   where the lead already sits on average (so the ride doesn't
+             change its level; The Servant's TRIM does the balance)
+    RANGE    from the measured swing and the genre (pop rides flattest)
+    SPEED    from the genre
+    GATE     between the gaps and the quietest words
+  RIDE goes on; LOOKAHEAD, MUSIC and OUTPUT are left as you set them. The
+  preset box shows "Set by The Master" and every change is explained in The
+  Master's WHAT I CHANGED & WHY log. Turn anything afterwards.
+
+  Without Flatliner, The Master still tells you when your lead jumps around
+  enough to need it.

@@ -1,10 +1,11 @@
 cmake_minimum_required(VERSION 3.22)
-project(FLATLINER VERSION 1.0.0)
+# Must come BEFORE project(), or CMake ignores them: universal (Apple Silicon + Intel), macOS 11+
+set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "")
+set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "")
+project(FLATLINER VERSION 1.1.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "")
-set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "")
 
 # Same JUCE version as Chop Shop, DREAD, Possessed and BuzzKill.
 # (Pass -DJUCE_LOCAL_DIR=/path/to/JUCE to build against a local checkout.)

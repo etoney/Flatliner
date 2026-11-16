@@ -954,6 +954,23 @@ void FlatlinerEditor::paint (juce::Graphics& g)
         g.setOpacity (1.0f);
     }
 
+    // Castle Danger Link: is The Master on the master bus?
+    {
+        auto& lk = proc.getLink();
+        const bool linked = lk.masterNearby();
+        const bool recent = lk.getLastNoteTime() > 0 && juce::Time::getMillisecondCounter() - lk.getLastNoteTime() < 60000;
+        const juce::Rectangle<float> led (118.0f, 97.0f, 7.0f, 7.0f);
+        g.setColour (linked ? pal::hazard : juce::Colour (0xff2a1c16)); g.fillEllipse (led);
+        g.setColour (juce::Colours::black.withAlpha (0.7f)); g.drawEllipse (led, 0.8f);
+        const auto track = proc.getTrackName();
+        g.setColour (linked ? pal::paint : pal::paintDim.withAlpha (0.7f));
+        g.setFont (tex::plainBold (9.0f).withExtraKerningFactor (0.12f));
+        g.drawText (! linked ? juce::String ("NOT LINKED TO THE MASTER")
+                             : (recent ? juce::String ("JUST SET BY THE MASTER  //  TURN ANYTHING")
+                                       : "LINKED TO THE MASTER" + (track.isNotEmpty() ? "  //  " + track.toUpperCase() : juce::String())),
+                    juce::Rectangle<float> (130.0f, 94.0f, 320.0f, 13.0f), juce::Justification::centredLeft, true);
+    }
+
     // live status screens
     auto statusLamp = [&] (juce::Rectangle<int> area, bool on)
     {
@@ -1017,6 +1034,7 @@ void FlatlinerEditor::timerCallback()
     const int statusKey = (proc.isSidechainConnected() ? 1 : 0) + 2 * juce::roundToInt (proc.apvts.getRawParameterValue ("lookahead")->load())
                           + 200 * juce::roundToInt (proc.apvts.getRawParameterValue ("music")->load()) + 100000 * proc.getLatencySamples();
     if (statusKey != lastStatusKey) { lastStatusKey = statusKey; repaint (scArea); repaint (latArea); }
+    if (++linkTick >= 15) { linkTick = 0; repaint (112, 92, 340, 16); }
 
     if (proc.presetVersion.load() != lastPresetVersion) refreshPresetBox();
     meters.in = inMeter; meters.out = outMeter; meters.fader = fader; meters.range = range; meters.ride = ride;

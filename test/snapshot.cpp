@@ -104,6 +104,45 @@ int main (int argc, char** argv)
         }
     }
 
+    // ---------------- Castle Danger Link: The Master reads the level swing and sets the ride
+    {
+        FlatlinerProcessor p;
+        p.setPlayConfigDetails (2, 2, 48000.0, 512);
+        auto otherBinary = cdlink::Node::createIsolatedForTesting();
+        juce::var lastStatus, lastApplied;
+        cdlink::Endpoint master ("master", [&] (const juce::var& m)
+        {
+            const auto ty = m.getProperty ("type", "").toString();
+            if (ty == "status" && m.getProperty ("from", "").toString() == p.getLink().getId()) lastStatus = m;
+            if (ty == "applied") lastApplied = m;
+        }, otherBinary);
+        auto pump = [] (int ms) { juce::MessageManager::getInstance()->runDispatchLoopUntil (ms); };
+        for (int i = 0; i < 30 && ! master.isOnline(); ++i) pump (50);
+        performance (p, 12);   // quiet verse (-31 dB) / loud chorus (-10 dB)
+        pump (1600);
+        const auto ex = lastStatus.getProperty ("extra", {});
+        const double p10 = ex.getProperty ("p10", 0.0), p90 = ex.getProperty ("p90", 0.0), secs = ex.getProperty ("seconds", 0.0);
+        check (lastStatus.isObject() && std::abs (p10 + 31.0) < 1.5 && std::abs (p90 + 10.0) < 1.5 && secs > 10.0,
+               juce::String::formatted ("Flatliner reports its input level swing (10%% %.1f dB, 90%% %.1f dB, %.1f s)", p10, p90, secs));
+        auto set = cdlink::Endpoint::makeMessage ("set");
+        auto* prm = new juce::DynamicObject();
+        prm->setProperty ("target", -20.5); prm->setProperty ("range", 12.0); prm->setProperty ("speed", 60.0); prm->setProperty ("gate", -50.0); prm->setProperty ("ride", 1.0);
+        set->setProperty ("params", juce::var (prm));
+        master.send (set, lastStatus.getProperty ("from", "").toString());
+        for (int i = 0; i < 40 && ! lastApplied.isObject(); ++i) pump (50);
+        check (std::abs (p.apvts.getRawParameterValue ("target")->load() + 20.5f) < 0.05f && std::abs (p.apvts.getRawParameterValue ("range")->load() - 12.0f) < 0.05f
+               && lastApplied.isObject() && p.getCurrentPresetName() == "Set by The Master" && p.getLink().masterNearby(),
+               "The Master can set TARGET / RANGE / SPEED / GATE (and gets a confirmation)");
+        std::unique_ptr<juce::AudioProcessorEditor> ed (p.createEditor());
+        for (int i = 0; i < 4; ++i) { performance (p, 1); pump (60); }
+        check (writePng (ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f), dir.getChildFile ("gui_linked.png")), "linked snapshot");
+        master.send (cdlink::Endpoint::makeMessage ("measure-reset"));
+        pump (300);
+        performance (p, 1);
+        pump (600);
+        check ((double) lastStatus.getProperty ("extra", {}).getProperty ("seconds", 99.0) < 1.5, "The Master's RESET starts the measurement again");
+    }
+
     // ---------------- GUI
     {
         FlatlinerProcessor p;

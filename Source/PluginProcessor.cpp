@@ -1,4 +1,5 @@
 #include "PluginProcessor.h"
+#include "Rebel.h"
 #include "PluginEditor.h"
 
 #ifndef JucePlugin_VersionString
@@ -46,6 +47,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout FlatlinerProcessor::createLa
     p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "music", 1 },     "Music",     NormalisableRange<float> (0.0f, 100.0f, 1.0f),    0.0f, pctAttr));
     p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "output", 1 },    "Output",    NormalisableRange<float> (-12.0f, 12.0f, 0.1f),   0.0f, dbAttr));
     p.push_back (std::make_unique<AudioParameterBool>  (ParameterID { "ride", 1 },      "Ride",      true));
+    p.push_back (cdrebel::makeParam());
     return { p.begin(), p.end() };
 }
 
@@ -142,7 +144,7 @@ void FlatlinerProcessor::resetToDefaults()
 {
     for (auto* p : getParameters())
         if (auto* rp = dynamic_cast<juce::RangedAudioParameter*> (p))
-            rp->setValueNotifyingHost (rp->getDefaultValue());
+            if (rp->getParameterID() != "rebel") rp->setValueNotifyingHost (rp->getDefaultValue());   // a preset never changes REBEL
 }
 
 void FlatlinerProcessor::setCurrentProgram (int index)

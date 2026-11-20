@@ -151,4 +151,6 @@ private:
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FlatlinerEditor)
     cdrebel::Button rebel { proc.apvts };   // REBEL: The Master hands off
+    juce::ToggleButton followButton { "SECTIONS" };   // FOLLOW SECTIONS   // the line follows the vocal's own level over the last few seconds
+    juce::AudioProcessorValueTreeState::ButtonAttachment followAtt { proc.apvts, "follow", followButton };
 };

@@ -21,6 +21,7 @@ struct Params
     float gateDb      = -55.0f;  // below this the fader freezes
     float lookaheadMs = 10.0f;   // 0..50  (reported to the host as latency)
     float music       = 0.0f;    // 0..1   how much the sidechain raises the target
+    bool  follow      = false;   // FOLLOW SECTIONS (the plugin turns it on by default): the line follows the vocal's own level over the last few seconds
     float outputDb    = 0.0f;    // final trim
     bool  ride        = true;    // off = fader parked at 0 dB
 };
@@ -37,6 +38,8 @@ public:
         for (auto& l : line) l.assign ((size_t) delaySize, 0.0f);
         writePos = 0;
         hpState = fastMs = vocalMs = musicMs = 0.0f;
+        sectionDb = -100.0f;
+        sectionCoef = 1.0f - std::exp (-1.0f / (6.0f * (float) sr));          // ~6 s: a line or two, never the whole song
         fader = 0.0f;
         hpCoef    = 1.0f - std::exp (-6.2831853f * 120.0f / (float) sr);       // ~120 Hz high-pass so rumble doesn't move the fader
         fastCoef  = 1.0f - std::exp (-1.0f / (0.010f * (float) sr));           // 10 ms mean-square first, so the waveform ripple doesn't bias the reading
@@ -103,7 +106,11 @@ public:
                     desired = fader;                      // gate closed: hold, don't push breaths and room noise up
                 else
                 {
-                    float target = params.targetDb;
+                    // FOLLOW SECTIONS: aim at where the vocal has been sitting for the last few seconds,
+                    // so it still evens out the words but a louder chorus stays louder
+                    if (sectionDb < -99.0f) sectionDb = vocalDb;
+                    else sectionDb += sectionCoef * (vocalDb - sectionDb);
+                    float target = params.follow ? sectionDb : params.targetDb;
                     if (haveSc && params.music > 0.0f)    // louder music -> the vocal target rises (0 dB at -30 dB music, +12 dB at -18 dB)
                         target += params.music * std::clamp (musicDb + 30.0f, 0.0f, 12.0f);
                     desired = std::clamp (target - vocalDb, -params.rangeDb, params.rangeDb);
@@ -134,11 +141,12 @@ public:
         voiceDb.store (lastVocalDb, std::memory_order_relaxed);
         musicDb.store (lastMusicDb, std::memory_order_relaxed);
         faderDb.store (fader, std::memory_order_relaxed);
+        lineDb.store (params.follow ? (sectionDb > -99.0f ? sectionDb : params.targetDb) : params.targetDb, std::memory_order_relaxed);
     }
 
     // telemetry for the editor (peaks are read-and-reset with exchange (0))
     std::atomic<float> inPeak { 0.0f }, outPeak { 0.0f };
-    std::atomic<float> voiceDb { -100.0f }, musicDb { -100.0f }, faderDb { 0.0f };
+    std::atomic<float> voiceDb { -100.0f }, musicDb { -100.0f }, faderDb { 0.0f }, lineDb { -18.0f };   // lineDb: where the rider aims now
 
 private:
     double sr = 44100.0;
@@ -147,5 +155,6 @@ private:
     int delaySize = 1, writePos = 0, lookaheadSamples = 0;
     float hpCoef = 0, fastCoef = 0, atkCoef = 0, relCoef = 0, musicCoef = 0, downCoef = 0, upCoef = 0;
     float hpState = 0, fastMs = 0, vocalMs = 0, musicMs = 0, fader = 0, outGain = 1.0f;
+    float sectionDb = -100.0f, sectionCoef = 0;
 };
 } // namespace flat

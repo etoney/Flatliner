@@ -454,7 +454,8 @@ void ScopeDisplay::paint (juce::Graphics& g)
     const auto plot = juce::Rectangle<float> (r.getX() + 30.0f, r.getY() + 30.0f, r.getWidth() - 40.0f, r.getHeight() - 52.0f);
     auto toY = [&] (float db) { return plot.getBottom() - (juce::jlimit (-60.0f, 0.0f, db) + 60.0f) / 60.0f * plot.getHeight(); };
     auto val = [this] (const char* id) { return proc.apvts.getRawParameterValue (id)->load(); };
-    const float target = val ("target"), range = val ("range"), gate = val ("gate");
+    const bool follow = val ("follow") > 0.5f;
+    const float target = follow ? proc.getEngine().lineDb.load() : val ("target"), range = val ("range"), gate = val ("gate");
     const bool ride = val ("ride") > 0.5f;
 
     // grid
@@ -485,7 +486,7 @@ void ScopeDisplay::paint (juce::Graphics& g)
     dashedLine (toY (target), pal::hazard.withAlpha (0.9f), tl);
     dashedLine (toY (gate), pal::paintDim.withAlpha (0.5f), gl);
     g.setFont (tex::plainBold (8.5f));
-    g.setColour (pal::hazard); g.drawText ("TARGET", juce::Rectangle<float> (plot.getRight() - 50.0f, toY (target) - 12.0f, 50.0f, 11.0f), juce::Justification::centredRight);
+    g.setColour (pal::hazard); g.drawText (follow ? "SECTION" : "TARGET", juce::Rectangle<float> (plot.getRight() - 50.0f, toY (target) - 12.0f, 50.0f, 11.0f), juce::Justification::centredRight);
     g.setColour (pal::paintDim.withAlpha (0.8f)); g.drawText ("GATE", juce::Rectangle<float> (plot.getRight() - 50.0f, toY (gate) - 12.0f, 50.0f, 11.0f), juce::Justification::centredRight);
 
     // traces: dim = the vocal as it comes in, bright = after the fader
@@ -513,7 +514,8 @@ void ScopeDisplay::paint (juce::Graphics& g)
     // labels
     g.setColour (pal::paint); g.setFont (tex::stencil (15.0f).withExtraKerningFactor (0.08f));
     juce::String head = ride ? "RIDING" : "RIDE OFF";
-    head << "  /  TARGET " << juce::String (target, 1) << " DB";
+    if (follow) head << "  /  FOLLOWS THE SECTION";
+    else head << "  /  TARGET " << juce::String (target, 1) << " DB";
     g.drawFittedText (head, r.reduced (12, 6).removeFromTop (18).toNearestInt(), juce::Justification::centredLeft, 1, 0.6f);
     g.setColour (pal::paintDim.withAlpha (0.7f)); g.setFont (tex::plainBold (8.5f).withExtraKerningFactor (0.08f));
     g.drawText ("DIM = VOICE IN   BRIGHT = AFTER FADER", r.reduced (12, 6).removeFromBottom (12), juce::Justification::centredLeft);
@@ -627,6 +629,10 @@ FlatlinerEditor::FlatlinerEditor (FlatlinerProcessor& p)
     setLookAndFeel (&lnf);
 
     targetKnob = &makeKnob ("target", "TARGET");
+    followButton.setTooltip ("SECTIONS (on): Flatliner aims at where the vocal has been sitting for the last few seconds, "
+                             "so it evens out the words but a louder chorus stays louder and a quiet verse stays quiet. "
+                             "Off: one level for the whole song, set by TARGET.");
+    addAndMakeVisible (followButton);
     rangeKnob  = &makeKnob ("range", "RANGE");
     speedKnob  = &makeKnob ("speed", "SPEED");
     gateKnob   = &makeKnob ("gate", "GATE");
@@ -736,6 +742,7 @@ void FlatlinerEditor::resized()
     scope.setBounds (28, 252, 246, 300);
     plates.push_back ({ "CONTROLS", { 296, 226, 470, 338 } });
     placeKnob (*targetKnob, { 306, 262, 170, 250 });
+    followButton.setBounds (318, 528, 146, 26);
     const int gx = 484, gw = 93, gh = 148, row2 = 252 + gh + 8;
     placeKnob (*rangeKnob,  { gx,           252,  gw, gh });
     placeKnob (*speedKnob,  { gx + gw,      252,  gw, gh });

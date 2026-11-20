@@ -72,6 +72,32 @@ inline void runEngineChecks (const Check& check)
         check (std::abs (l1 + 19.0f) < 0.6f && std::abs (l2 + 19.0f) < 0.6f, fmt ("loud passages ridden down to the target: %.2f / %.2f dB (target -19)", l1, l2));
     }
 
+    // 1b) FOLLOW SECTIONS: words inside a section are evened out, but a louder chorus stays louder
+    {
+        flat::Params p; p.targetDb = -20.0f; p.rangeDb = 8.0f; p.speed = 0.55f; p.lookaheadMs = 10.0f; p.follow = true;
+        auto e = make (p);
+        // 20 s verse around -30 dB, 20 s chorus around -18 dB; inside each, phrases jump +/-5 dB every 1.5 s
+        auto amp = [&] (int i) { const bool chorus = i >= 20 * sec; const float base = chorus ? 0.18f : 0.045f; return base * (((i / (3 * sec / 2)) % 2 == 0) ? 1.8f : 0.55f); };
+        auto y = render (*e, 40 * sec, [&] (int i) { return sine (i, amp (i)); });
+        const float verse = rmsDb (y, 12 * sec, 19 * sec), chorus = rmsDb (y, 32 * sec, 39 * sec);
+        // word-to-word spread inside the chorus, before and after
+        auto spread = [&] (const std::vector<float>& v)
+        {
+            float lo = 0, hi = -200;
+            lo = 200;
+            for (int k = 22; k < 26; ++k) { const float d = rmsDb (v, k * 3 * sec / 2 + sec / 2, (k + 1) * 3 * sec / 2 - sec / 10); lo = std::min (lo, d); hi = std::max (hi, d); }
+            return hi - lo;
+        };
+        std::vector<float> dry (y.size()); for (size_t i = 0; i < dry.size(); ++i) dry[i] = sine ((int) i, amp ((int) i));
+        check (chorus - verse > 8.0f, fmt ("FOLLOW SECTIONS keeps the louder chorus louder (%.1f dB over the verse; it was 12)", chorus - verse));
+        check (spread (y) < spread (dry) - 3.0f, fmt ("FOLLOW SECTIONS still evens out the words (%.1f dB spread, was %.1f)", spread (y), spread (dry)));
+        flat::Params q = p; q.follow = false; q.targetDb = -24.0f; q.rangeDb = 12.0f;
+        auto e2 = make (q);
+        auto y2 = render (*e2, 40 * sec, [&] (int i) { return sine (i, amp (i)); });
+        const float v2 = rmsDb (y2, 12 * sec, 19 * sec), c2 = rmsDb (y2, 32 * sec, 39 * sec);
+        check (c2 - v2 < 4.0f, fmt ("without it, one TARGET for the whole song flattens the sections (%.1f dB apart)", c2 - v2));
+    }
+
     // 2) RIDE off = a straight wire
     {
         flat::Params p; p.ride = false; p.lookaheadMs = 0.0f;

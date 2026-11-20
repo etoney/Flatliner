@@ -25,7 +25,14 @@ THE KNOBS
   TARGET        The level the rider aims for (measured as RMS, so it follows
                 how loud the vocal FEELS, not the peaks). Start around -18 dB,
                 then raise or lower it until the vocal sits where you want it
-                in the mix.
+                in the mix. Used when SECTIONS is off.
+
+  SECTIONS      (under TARGET, on by default) Flatliner aims at where the
+                vocal has been sitting for the last few seconds instead of one
+                level for the whole song. It still evens out loud and soft
+                words, but a chorus sung louder stays louder and a quiet verse
+                stays quiet. THE LINE shows the moving SECTION line. Turn it
+                off for one fixed level (TARGET), e.g. a podcast or voice-over.
 
   RANGE         The most the fader is allowed to move, up or down. Small
                 (2-4 dB) = a gentle, invisible ride. Large (10-18 dB) =
@@ -95,9 +102,10 @@ LINKED TO THE MASTER
   parts, and the gaps between phrases) from The Master's RESET onwards. In
   MY PLUGINS mode, The Master finds which track it's on (by track name, or by
   matching it to The Servant on the same track) and on APPLY sets:
-    TARGET   where the lead already sits on average (so the ride doesn't
-             change its level; The Servant's TRIM does the balance)
-    RANGE    from the measured swing and the genre (pop rides flattest)
+    SECTIONS on, so the vocal keeps each section's level
+    TARGET   where the lead already sits on average (used if SECTIONS is off)
+    RANGE    from the measured swing and the genre, at most 8 dB: it only
+             evens out the words
     SPEED    from the genre
     GATE     between the gaps and the quietest words
   RIDE goes on; LOOKAHEAD, MUSIC and OUTPUT are left as you set them. The

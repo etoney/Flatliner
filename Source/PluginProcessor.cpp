@@ -13,7 +13,7 @@ FlatlinerProcessor::FlatlinerProcessor()
       apvts (*this, nullptr, "Flatliner", createLayout())
 {
 
-    juce::StringArray ids { "target", "range", "speed", "gate", "lookahead", "music", "output", "ride" };
+    juce::StringArray ids { "target", "range", "speed", "gate", "lookahead", "music", "output", "ride", "follow" };
     link = std::make_unique<Link> ("flatliner", "Flatliner", JucePlugin_VersionString, apvts, ids);
     link->onSetByMaster = [this] (const juce::StringArray&) { currentPresetName = "Set by The Master"; ++presetVersion; };
     link->onOtherMessage = [this] (const juce::var& m)
@@ -47,6 +47,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout FlatlinerProcessor::createLa
     p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "music", 1 },     "Music",     NormalisableRange<float> (0.0f, 100.0f, 1.0f),    0.0f, pctAttr));
     p.push_back (std::make_unique<AudioParameterFloat> (ParameterID { "output", 1 },    "Output",    NormalisableRange<float> (-12.0f, 12.0f, 0.1f),   0.0f, dbAttr));
     p.push_back (std::make_unique<AudioParameterBool>  (ParameterID { "ride", 1 },      "Ride",      true));
+    p.push_back (std::make_unique<AudioParameterBool>  (ParameterID { "follow", 1 },    "Follow Sections", true));
     p.push_back (cdrebel::makeParam());
     return { p.begin(), p.end() };
 }
@@ -61,6 +62,7 @@ flat::Params FlatlinerProcessor::currentParams() const
     p.gateDb = v ("gate");
     p.lookaheadMs = v ("lookahead");
     p.music = v ("music") * 0.01f;
+    p.follow = v ("follow") > 0.5f;
     p.outputDb = v ("output");
     p.ride = v ("ride") > 0.5f;
     return p;

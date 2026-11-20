@@ -7,7 +7,7 @@ project(FLATLINER VERSION 1.2.0)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Same JUCE version as Chop Shop, DREAD, Possessed and BuzzKill.
+# Same JUCE version as Cutthroat, DREAD, Possessed and Dead Air.
 # (Pass -DJUCE_LOCAL_DIR=/path/to/JUCE to build against a local checkout.)
 if(JUCE_LOCAL_DIR)
     add_subdirectory(${JUCE_LOCAL_DIR} JUCE)

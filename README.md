@@ -28,4 +28,4 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release --target Flatliner_VST3
 ```
 
-Built with JUCE 8.0.15 (same as Chop Shop, DREAD, Possessed and BuzzKill).
+Built with JUCE 8.0.15 (same as Cutthroat, DREAD, Possessed and Dead Air).

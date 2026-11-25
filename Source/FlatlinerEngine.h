@@ -1,5 +1,5 @@
 #pragma once
-// FLATLINER engine: an automatic fader rider.
+// FLATLINER engine: an auto leveler.
 //   Listens to the vocal, works out how far it is from TARGET, and moves a virtual fader
 //   (within +/- RANGE dB) to flatten the performance onto that line.
 //   Lookahead delays the audio so the fader is already moving when a loud or quiet phrase arrives.

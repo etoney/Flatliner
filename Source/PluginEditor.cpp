@@ -726,7 +726,7 @@ void MeterPanel::paint (juce::Graphics& g)
 //==============================================================================
 FlatlinerEditor::FlatlinerEditor (FlatlinerProcessor& p)
     : AudioProcessorEditor (&p), proc (p),
-      rideSel (*p.apvts.getParameter ("ride"), { "OFF", "RIDE" }, { "FADER PARKED AT 0 DB", "AUTO FADER ON" }),
+      rideSel (*p.apvts.getParameter ("ride"), { "OFF", "RIDE" }, { "FADER PARKED AT 0 DB", "AUTO LEVELER ON" }),
       scope (p)
 {
     setLookAndFeel (&lnf);
@@ -1020,7 +1020,7 @@ void FlatlinerEditor::buildBackdrop()
     g.drawImage (l3, juce::Rectangle<float> (tx + 1.0f, badge.getY() + 60.0f, tw, 14.0f));
 
     // stamped subtitle under the logo
-    auto sub = tex::distressedText ("AUTO FADER RIDER  //  V" + juce::String (JucePlugin_VersionString),
+    auto sub = tex::distressedText ("LEVEL THE FIELD  //  V" + juce::String (JucePlugin_VersionString),
                                     320, 14, tex::plainBold (10.5f), pal::paintDim, juce::Justification::centredLeft, scale, 0.15f, 99, 0.14f);
     g.drawImage (sub, juce::Rectangle<float> (118.0f, 80.0f, 320.0f, 14.0f));
 

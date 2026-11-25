@@ -1,9 +1,9 @@
 ===============================================================================
   FLATLINER  //  CONTROLS QUICK REFERENCE
-  Castle Danger Music Company
+  Level the Field  //  Castle Danger Music Company
 ===============================================================================
 
-Flatliner is an automatic fader rider. It listens to your vocal and moves a
+Flatliner is an auto leveler. It listens to your vocal and moves a
 virtual fader for you, pushing quiet words up and pulling loud ones down, so
 the performance sits on one flat line: the TARGET.
 
@@ -22,7 +22,7 @@ RIDE
 -------------------------------------------------------------------------------
 THE KNOBS
 -------------------------------------------------------------------------------
-  TARGET        The level the rider aims for (measured as RMS, so it follows
+  TARGET        The level Flatliner aims for (measured as RMS, so it follows
                 how loud the vocal FEELS, not the peaks). Start around -18 dB,
                 then raise or lower it until the vocal sits where you want it
                 in the mix. Used when SECTIONS is off.
@@ -46,7 +46,7 @@ THE KNOBS
                 room noise and the gaps between phrases are not pushed up.
                 If the fader pumps noise up in the pauses, raise the gate.
 
-  LOOKAHEAD     Delays the audio (0-50 ms) while the rider listens to it
+  LOOKAHEAD     Delays the audio (0-50 ms) while Flatliner listens to it
                 early, so the fader is already moving when a loud word or a
                 whisper arrives, instead of reacting after it. Flatliner tells
                 your DAW about the delay, and the DAW lines everything up.

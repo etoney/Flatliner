@@ -6,6 +6,7 @@
 #include "../Source/PluginProcessor.h"
 #include "../Source/PluginEditor.h"
 #include "dsp_checks.h"
+#include "plan_checks.h"
 
 static bool writePng (const juce::Image& img, const juce::File& f)
 {
@@ -55,6 +56,7 @@ int main (int argc, char** argv)
 
     // ---------------- DSP engine
     flatcheck::runEngineChecks ([&] (bool ok, const std::string& what) { check (ok, juce::String (what)); });
+    flatcheck::runPlanChecks ([&] (bool ok, const std::string& what) { check (ok, juce::String (what)); });
 
     // ---------------- processor
     {
@@ -165,6 +167,45 @@ int main (int argc, char** argv)
         if (auto* fe = dynamic_cast<FlatlinerEditor*> (ed.get())) fe->getSaveButton().triggerClick();
         juce::MessageManager::getInstance()->runDispatchLoopUntil (120);
         check (writePng (ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f), dir.getChildFile ("gui_save.png")), "save dialog snapshot");
+    }
+
+    // ---------------- GUI in ARA mode: the whole take, planned (a 2-minute take: verse, chorus, verse, chorus)
+    {
+        FlatlinerProcessor p;
+        p.setPlayConfigDetails (2, 2, 48000.0, 512);
+        p.setCurrentProgram (3);
+        FlatlinerProcessor::AraView reading; reading.bound = true; reading.clips = 1;
+        p.setAraViewForTest (reading);
+        std::unique_ptr<juce::AudioProcessorEditor> ed (p.createEditor());
+        juce::MessageManager::getInstance()->runDispatchLoopUntil (120);
+        check (writePng (ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f), dir.getChildFile ("gui_ara_reading.png")), "ARA snapshot: reading the take");
+
+        const double sr = 48000.0;
+        flat::Analyser an (sr);
+        std::vector<float> blk (4800);
+        const float jitter[6] = { 1.8f, 0.55f, 1.25f, 0.6f, 1.6f, 0.8f };
+        for (int b = 0; b < 120 * 10; ++b)
+        {
+            for (int i = 0; i < 4800; ++i)
+            {
+                const int n = b * 4800 + i;
+                const double t = n / sr;
+                const bool chorus = ((int) (t / 30.0)) % 2 == 1;
+                const double inWord = std::fmod (t, 0.55);
+                const int word = (int) (t / 0.55);
+                const bool breath = word % 5 == 4;
+                const float amp = (inWord < 0.4 && ! breath && std::fmod (t, 30.0) > 1.0) ? (chorus ? 0.18f : 0.045f) * jitter[word % 6] : 0.0f;
+                blk[(size_t) i] = amp * (float) std::sin (6.283185307 * 220.0 * t);
+            }
+            an.push (blk.data(), 4800);
+        }
+        FlatlinerProcessor::AraView v; v.bound = true; v.clips = 1;
+        auto a = std::make_shared<flat::Analysis> (an.finish());
+        v.plan = std::make_shared<flat::Plan> (flat::planRide (*a, p.currentParams()));
+        v.analysis = a; v.playPos = (long long) (74.0 * sr);
+        p.setAraViewForTest (v);
+        juce::MessageManager::getInstance()->runDispatchLoopUntil (200);
+        check (writePng (ed->createComponentSnapshot (ed->getLocalBounds(), true, 2.0f), dir.getChildFile ("gui_ara.png")), "ARA snapshot: the whole take, planned");
     }
 
     std::printf ("\n%d failure(s)\n", failures);

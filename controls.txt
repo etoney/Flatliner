@@ -93,6 +93,38 @@ GETTING STARTED
 
 
 -------------------------------------------------------------------------------
+ARA: FLATLINER ON THE CLIP ITSELF
+-------------------------------------------------------------------------------
+  In a DAW with ARA (Studio Pro, Logic, Cubase, Reaper and others), apply
+  Flatliner to the vocal clip instead of inserting it on the track. In Studio
+  Pro: drag Flatliner from the browser onto the clip (or pick it from the
+  clip's right-click menu).
+
+  It then reads the whole take as soon as the DAW lets it (a few seconds,
+  without playing), and plans the ride with the whole take in view:
+    - SECTIONS are centred on each moment (the 3 s before AND after), and a
+      section change is found where it happens, so a chorus has its level
+      from its first word.
+    - Every move is planned ahead: the fader is already there when the word
+      starts. No lookahead, no latency.
+    - Breaths and gaps are known: the fader holds through them and glides to
+      the next phrase's level just before it starts. It never pumps on
+      silence.
+  The knobs work as usual (TARGET, RANGE, SPEED, GATE, SECTIONS, RIDE,
+  OUTPUT); turning one re-plans at once. LOOKAHEAD isn't needed, and MUSIC
+  works in live mode only (on the clip there's no sidechain).
+
+  THE LINE shows the whole take: dim = the take, bright = after the planned
+  fader, dashed = where it aims, and a marker where playback is. It says
+  READING THE TAKE... until the take has been read. The status screens say
+  ARA: ON THE CLIP and NO LATENCY.
+
+  Edit the clip (comp, trim, move) and Flatliner reads it again by itself.
+  A clip at a different sample rate from the song plays untouched for now.
+  ARA works on clips, so a vocal BUS still needs Flatliner in live mode.
+  In a DAW without ARA (Ableton Live), Flatliner is always in live mode.
+
+-------------------------------------------------------------------------------
 LINKED TO THE MASTER
 -------------------------------------------------------------------------------
   If The Master is on your master bus, Flatliner links to it by itself (the

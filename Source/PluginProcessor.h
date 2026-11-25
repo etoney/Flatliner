@@ -1,17 +1,35 @@
 #pragma once
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "FlatlinerEngine.h"
+#include "RidePlan.h"
 #include "Presets.h"
 #include "CDLink.h"
 
 class FlatlinerProcessor : public juce::AudioProcessor
+                         #if JucePlugin_Enable_ARA
+                           , public juce::AudioProcessorARAExtension
+                         #endif
 {
 public:
+   #if JucePlugin_Enable_ARA
+    juce::AudioProcessorARAExtension* getARAClientExtensions() override { return this; }
+   #endif
+    // ARA mode: Flatliner was applied to the clip itself and plans the ride with the whole take in view
+    struct AraView
+    {
+        bool bound = false;                               // applied to a clip (ARA)
+        int clips = 0;                                    // takes it plays
+        std::shared_ptr<const flat::Analysis> analysis;   // nullptr: still reading the take
+        std::shared_ptr<const flat::Plan> plan;
+        long long playPos = -1;                           // where playback is in the take (samples)
+    };
+    AraView araView() const;
+    void setAraViewForTest (AraView v) { testView = std::make_unique<AraView> (std::move (v)); }   // headless snapshots only
     FlatlinerProcessor();
     ~FlatlinerProcessor() override = default;
 
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
-    void releaseResources() override {}
+    void releaseResources() override;
     bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
@@ -60,6 +78,7 @@ public:
 
 private:
     void resetToDefaults();
+    std::unique_ptr<AraView> testView;
     std::unique_ptr<Link> link;
     juce::String trackName;
     juce::CriticalSection nameLock;

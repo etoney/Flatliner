@@ -30,6 +30,25 @@ jobs:
           name: gui-snapshots
           path: snapshots/*.png
 
+  # ARA: build the real VST3 with ARA on Linux, then a tiny ARA host applies it to a take and checks the ride
+  ara-host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Linux deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfreetype6-dev libfontconfig1-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxcomposite-dev libxrender-dev libxext-dev libasound2-dev
+      - name: ARA SDK
+        run: git clone -q --depth 1 --branch releases/2.3.0 --recurse-submodules --shallow-submodules https://github.com/Celemony/ARA_SDK.git "$RUNNER_TEMP/ARA_SDK"
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DFLATLINER_ARA_SDK="$RUNNER_TEMP/ARA_SDK"
+      - name: Build
+        run: cmake --build build --config Release --target Flatliner_VST3 FlatlinerARAHost -j4
+      - name: Apply Flatliner to a take through ARA and check the ride
+        run: ./build/FlatlinerARAHost_artefacts/Release/FlatlinerARAHost "$PWD/build/Flatliner_artefacts/Release/VST3/Flatliner.vst3"
+
   build:
     strategy:
       fail-fast: false
@@ -39,13 +58,17 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+      - name: ARA SDK (Flatliner on the clip itself)
+        shell: bash
+        run: git clone -q --depth 1 --branch releases/2.3.0 --recurse-submodules --shallow-submodules https://github.com/Celemony/ARA_SDK.git "$RUNNER_TEMP/ARA_SDK"
       - name: Configure
         shell: bash
         run: |
+          ARA="$RUNNER_TEMP/ARA_SDK"
           if [ "$RUNNER_OS" = "macOS" ]; then
-            cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+            cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DFLATLINER_ARA_SDK="$ARA"
           else
-            cmake -B build -DCMAKE_BUILD_TYPE=Release
+            cmake -B build -DCMAKE_BUILD_TYPE=Release -DFLATLINER_ARA_SDK="$ARA"
           fi
       - name: Build
         run: cmake --build build --config Release --target Flatliner_VST3

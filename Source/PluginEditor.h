@@ -56,6 +56,7 @@ public:
     void paint (juce::Graphics&) override;
     void push (float voiceDb, float riddenDb);
 private:
+    void paintWholeTake (juce::Graphics&, juce::Rectangle<float> r, juce::Rectangle<float> plot, const FlatlinerProcessor::AraView&);
     static constexpr int N = 300;   // about 10 seconds at 30 fps
     FlatlinerProcessor& proc;
     std::array<float, N> voice, ridden;

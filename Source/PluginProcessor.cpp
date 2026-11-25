@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 #include "Rebel.h"
 #include "PluginEditor.h"
+#include "FlatlinerARA.h"
 
 #ifndef JucePlugin_VersionString
  #define JucePlugin_VersionString "dev"
@@ -77,8 +78,35 @@ bool FlatlinerProcessor::isBusesLayoutSupported (const BusesLayout& layouts) con
     return sc.isDisabled() || sc == juce::AudioChannelSet::mono() || sc == juce::AudioChannelSet::stereo();
 }
 
+void FlatlinerProcessor::releaseResources()
+{
+   #if JucePlugin_Enable_ARA
+    releaseResourcesForARA();
+   #endif
+}
+
+FlatlinerProcessor::AraView FlatlinerProcessor::araView() const
+{
+    if (testView != nullptr) return *testView;
+    AraView v;
+   #if JucePlugin_Enable_ARA
+    if (! isBoundToARA()) return v;
+    v.bound = true;
+    if (auto* r = getPlaybackRenderer<FlatRenderer>())
+    {
+        const auto pv = r->currentView();
+        v.clips = r->numSources(); v.analysis = pv.analysis; v.plan = pv.plan; v.playPos = pv.playPos;
+    }
+   #endif
+    return v;
+}
+
 void FlatlinerProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
+   #if JucePlugin_Enable_ARA
+    prepareToPlayForARA (sampleRate, samplesPerBlock, getMainBusNumOutputChannels(), getProcessingPrecision());
+    if (isBoundToARA()) { engine.prepare (sampleRate, samplesPerBlock); reportedLatency = 0; setLatencySamples (0); return; }   // ARA: no lookahead needed
+   #endif
     engine.prepare (sampleRate, samplesPerBlock);
     const auto p = currentParams();
     engine.setParams (p, true);
@@ -90,6 +118,34 @@ void FlatlinerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
 {
     juce::ScopedNoDenormals noDenormals;
     const int n = buffer.getNumSamples();
+
+   #if JucePlugin_Enable_ARA
+    // ARA: the clip comes from the take itself, through the planned fader
+    if (isBoundToARA())
+    {
+        if (auto* r = getPlaybackRenderer<FlatRenderer>()) r->setParams (currentParams());
+        auto mb = getBusBuffer (buffer, false, 0);
+        if (! processBlockForARA (mb, isRealtime(), getPlayHead())) {}
+        // the meters: the take's level and the planned fader where playback is
+        const auto v = araView();
+        if (v.analysis != nullptr && v.plan != nullptr && v.playPos >= 0)
+        {
+            const auto step = (size_t) juce::jmax ((long long) 0, v.playPos / juce::jmax (1, v.analysis->hop));
+            if (step < v.analysis->levelDb.size())
+            {
+                const float g = v.plan->gainAt (v.playPos);
+                engine.voiceDb.store (v.analysis->levelDb[step]); engine.faderDb.store (g);
+                engine.lineDb.store (v.plan->lineDb[juce::jmin (step, v.plan->lineDb.size() - 1)]);
+            }
+        }
+        float pk = 0; for (int c = 0; c < mb.getNumChannels(); ++c) pk = juce::jmax (pk, mb.getMagnitude (c, 0, n));
+        engine.outPeak.store (juce::jmax (engine.outPeak.load(), pk));
+        double outPow = 0;
+        for (int c = 0; c < mb.getNumChannels(); ++c) for (int i = 0; i < n; ++i) outPow += (double) mb.getSample (c, i) * mb.getSample (c, i);
+        link->env.addPowers (outPow / juce::jmax (1, mb.getNumChannels() * n), outPow / juce::jmax (1, mb.getNumChannels() * n), n);
+        return;
+    }
+   #endif
 
     auto mainBus = getBusBuffer (buffer, true, 0);
     const int chs = mainBus.getNumChannels();
@@ -242,6 +298,17 @@ void FlatlinerProcessor::setStateInformation (const void* data, int sizeInBytes)
 
 juce::var FlatlinerProcessor::levelStats() const
 {
+    // ARA: the whole take is already read, no listening pass needed
+    if (const auto v = araView(); v.bound && v.analysis != nullptr)
+    {
+        auto* o = new juce::DynamicObject();
+        int active = 0; for (auto d : v.analysis->levelDb) if (d > v.analysis->p90 - 40.0f) ++active;
+        o->setProperty ("seconds", active * flat::kHopSeconds);
+        o->setProperty ("p10", v.analysis->p10); o->setProperty ("p50", v.analysis->p50); o->setProperty ("p90", v.analysis->p90);
+        o->setProperty ("floorDb", v.analysis->floorDb);
+        o->setProperty ("ara", true);
+        return juce::var (o);
+    }
     std::array<int, kHistBins> h {};
     int total = 0, top = -1;
     for (int b = 0; b < kHistBins; ++b) { h[(size_t) b] = hist[(size_t) b].load(); total += h[(size_t) b]; if (h[(size_t) b] > 0) top = b; }
@@ -270,3 +337,10 @@ juce::var FlatlinerProcessor::levelStats() const
 juce::AudioProcessorEditor* FlatlinerProcessor::createEditor() { return new FlatlinerEditor (*this); }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new FlatlinerProcessor(); }
+
+#if JucePlugin_Enable_ARA
+const ARA::ARAFactory* JUCE_CALLTYPE createARAFactory()
+{
+    return juce::ARADocumentControllerSpecialisation::createARAFactory<FlatDocumentController>();
+}
+#endif

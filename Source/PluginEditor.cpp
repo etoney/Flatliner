@@ -453,6 +453,7 @@ void ScopeDisplay::paint (juce::Graphics& g)
 
     const auto plot = juce::Rectangle<float> (r.getX() + 30.0f, r.getY() + 30.0f, r.getWidth() - 40.0f, r.getHeight() - 52.0f);
     auto toY = [&] (float db) { return plot.getBottom() - (juce::jlimit (-60.0f, 0.0f, db) + 60.0f) / 60.0f * plot.getHeight(); };
+    if (const auto ara = proc.araView(); ara.bound) { paintWholeTake (g, r, plot, ara); return; }
     auto val = [this] (const char* id) { return proc.apvts.getRawParameterValue (id)->load(); };
     const bool follow = val ("follow") > 0.5f;
     const float target = follow ? proc.getEngine().lineDb.load() : val ("target"), range = val ("range"), gate = val ("gate");
@@ -521,6 +522,108 @@ void ScopeDisplay::paint (juce::Graphics& g)
     g.drawText ("DIM = VOICE IN   BRIGHT = AFTER FADER", r.reduced (12, 6).removeFromBottom (12), juce::Justification::centredLeft);
 
     // glass + bezel
+    g.setGradientFill (juce::ColourGradient (juce::Colours::white.withAlpha (0.05f), r.getX(), r.getY(), juce::Colours::transparentWhite, r.getX(), r.getCentreY(), false));
+    g.fillRoundedRectangle (r, 4.0f);
+    g.setColour (juce::Colours::black); g.drawRoundedRectangle (r, 4.0f, 2.0f);
+    g.setColour (pal::rust.withAlpha (0.35f)); g.drawRoundedRectangle (r.reduced (2.0f), 3.0f, 1.0f);
+}
+
+// ARA: the whole take at once. Dim = the take, bright = after the planned fader, dashed = where it aims
+// (the section level, or TARGET), and a marker where playback is.
+void ScopeDisplay::paintWholeTake (juce::Graphics& g, juce::Rectangle<float> r, juce::Rectangle<float> plot, const FlatlinerProcessor::AraView& ara)
+{
+    auto toY = [&] (float db) { return plot.getBottom() - (juce::jlimit (-60.0f, 0.0f, db) + 60.0f) / 60.0f * plot.getHeight(); };
+    auto val = [this] (const char* id) { return proc.apvts.getRawParameterValue (id)->load(); };
+    const float gate = val ("gate");
+    const bool ride = val ("ride") > 0.5f, follow = val ("follow") > 0.5f;
+
+    g.setFont (tex::plainBold (8.0f));
+    for (int db = 0; db >= -60; db -= 12)
+    {
+        const float y = toY ((float) db);
+        g.setColour (juce::Colour (0xff2a1d16)); g.drawHorizontalLine ((int) y, plot.getX(), plot.getRight());
+        g.setColour (pal::paintDim.withAlpha (0.55f));
+        g.drawText (juce::String (db), juce::Rectangle<float> (r.getX() + 2.0f, y - 5.0f, 24.0f, 10.0f), juce::Justification::centredRight);
+    }
+
+    g.setColour (pal::paint); g.setFont (tex::stencil (15.0f).withExtraKerningFactor (0.08f));
+    juce::String head = "ARA  /  WHOLE TAKE";
+    const auto* a = ara.analysis.get();
+    if (a == nullptr)
+    {
+        g.drawFittedText (head, r.reduced (12, 6).removeFromTop (18).toNearestInt(), juce::Justification::centredLeft, 1, 0.6f);
+        g.setColour (pal::hazard); g.setFont (tex::stencil (18.0f));
+        g.drawText (ara.clips > 0 ? "READING THE TAKE..." : "NO CLIP YET", plot, juce::Justification::centred);
+    }
+    else
+    {
+        const int secs = (int) std::lround (a->seconds());
+        head << "  /  " << juce::String (secs / 60) << ":" << juce::String (secs % 60).paddedLeft ('0', 2) << "  /  " << (ride ? "RIDE PLANNED" : "RIDE OFF");
+        g.drawFittedText (head, r.reduced (12, 6).removeFromTop (18).toNearestInt(), juce::Justification::centredLeft, 1, 0.6f);
+        // seconds along the bottom
+        const double len = juce::jmax (1.0, a->seconds());
+        const int stepSec = len > 240 ? 60 : (len > 90 ? 30 : (len > 30 ? 10 : 5));
+        g.setFont (tex::plainBold (8.0f));
+        for (int t = stepSec; t < (int) len; t += stepSec)
+        {
+            const float x = plot.getX() + plot.getWidth() * (float) (t / len);
+            g.setColour (juce::Colour (0xff2a1d16)); g.drawVerticalLine ((int) x, plot.getY(), plot.getBottom());
+            g.setColour (pal::paintDim.withAlpha (0.55f));
+            g.drawText (juce::String (t / 60) + ":" + juce::String (t % 60).paddedLeft ('0', 2), juce::Rectangle<float> (x + 2.0f, plot.getBottom() - 11.0f, 32.0f, 10.0f), juce::Justification::centredLeft);
+        }
+        // one column per pixel: the loudest step in it
+        const int W = juce::jmax (2, (int) plot.getWidth());
+        const size_t N = a->levelDb.size();
+        juce::Path take, ridden, line;
+        bool started = false, rStarted = false;
+        for (int x = 0; x < W; ++x)
+        {
+            const size_t k0 = (size_t) ((double) x / W * (double) N), k1 = juce::jmax (k0 + 1, (size_t) ((double) (x + 1) / W * (double) N));
+            float lv = -100.0f, rv = -100.0f, ln = -100.0f;
+            for (size_t k = k0; k < juce::jmin (k1, N); ++k)
+            {
+                const float l = a->levelDb[k];
+                lv = juce::jmax (lv, l);
+                if (l >= gate) rv = juce::jmax (rv, l + (ara.plan != nullptr && k < ara.plan->gainDb.size() ? ara.plan->gainDb[k] : 0.0f));
+                if (ara.plan != nullptr && k < ara.plan->lineDb.size()) ln = ara.plan->lineDb[k];
+            }
+            const float px = plot.getX() + (float) x;
+            if (! started) { take.startNewSubPath (px, toY (lv)); line.startNewSubPath (px, toY (ln)); started = true; }
+            else { take.lineTo (px, toY (lv)); line.lineTo (px, toY (ln)); }
+            if (rv > -99.0f && lv >= ln - 12.0f) { if (! rStarted) { ridden.startNewSubPath (px, toY (rv)); rStarted = true; } else ridden.lineTo (px, toY (rv)); }
+            else rStarted = false;
+        }
+        g.setColour (pal::paintDim.withAlpha (0.5f)); g.strokePath (take, juce::PathStrokeType (1.0f));
+        if (ride)
+        {
+            g.setColour (pal::signalHot.withAlpha (0.16f)); g.strokePath (ridden, juce::PathStrokeType (5.0f));
+            g.setColour (pal::signalHot); g.strokePath (ridden, juce::PathStrokeType (1.6f));
+        }
+        if (ara.plan != nullptr)
+        {
+            juce::Path dashed; const float dl[2] = { 7.0f, 3.0f };
+            juce::PathStrokeType (1.2f).createDashedStroke (dashed, line, dl, 2);
+            g.setColour (pal::hazard.withAlpha (0.9f)); g.fillPath (dashed);
+        }
+        // the gate
+        {
+            juce::Path gl; gl.startNewSubPath (plot.getX(), toY (gate)); gl.lineTo (plot.getRight(), toY (gate));
+            juce::Path dashed; const float dl[2] = { 2.0f, 4.0f };
+            juce::PathStrokeType (1.0f).createDashedStroke (dashed, gl, dl, 2);
+            g.setColour (pal::paintDim.withAlpha (0.45f)); g.fillPath (dashed);
+        }
+        // where playback is
+        if (ara.playPos >= 0)
+        {
+            const float x = plot.getX() + plot.getWidth() * (float) juce::jlimit (0.0, 1.0, (double) ara.playPos / (double) juce::jmax ((std::int64_t) 1, a->samples));
+            g.setColour (juce::Colour (0xfffff0d8).withAlpha (0.85f)); g.drawVerticalLine ((int) x, plot.getY(), plot.getBottom());
+        }
+        g.setFont (tex::plainBold (8.5f));
+        g.setColour (pal::hazard); g.drawText (follow ? "SECTION" : "TARGET", juce::Rectangle<float> (plot.getRight() - 50.0f, plot.getY() - 12.0f, 50.0f, 11.0f), juce::Justification::centredRight);
+    }
+    g.setColour (pal::paintDim.withAlpha (0.7f)); g.setFont (tex::plainBold (8.5f).withExtraKerningFactor (0.08f));
+    g.drawText ("DIM = TAKE   BRIGHT = RIDDEN   DASHED = AIM", r.reduced (12, 6).removeFromBottom (12), juce::Justification::centredLeft);
+
     g.setGradientFill (juce::ColourGradient (juce::Colours::white.withAlpha (0.05f), r.getX(), r.getY(), juce::Colours::transparentWhite, r.getX(), r.getCentreY(), false));
     g.fillRoundedRectangle (r, 4.0f);
     g.setColour (juce::Colours::black); g.drawRoundedRectangle (r, 4.0f, 2.0f);
@@ -1003,6 +1106,14 @@ void FlatlinerEditor::paint (juce::Graphics& g)
         g.setColour (pal::paintDim.withAlpha (0.85f)); g.setFont (tex::plainBold (9.0f).withExtraKerningFactor (0.1f));
         g.drawFittedText (small, t, juce::Justification::centredLeft, 1, 0.7f);
     };
+    if (proc.araView().bound)
+    {
+        statusLamp (scArea, true);
+        statusText (scArea, "ARA: ON THE CLIP", "THE WHOLE TAKE IS READ", true);
+        statusLamp (latArea, false);
+        statusText (latArea, "NO LATENCY", "THE RIDE IS PLANNED AHEAD", false);
+        return;
+    }
     {
         const bool linked = proc.isSidechainConnected();
         const int music = juce::roundToInt (proc.apvts.getRawParameterValue ("music")->load());
@@ -1041,7 +1152,7 @@ void FlatlinerEditor::timerCallback()
     if (std::abs (flicker - before) > 0.01f) repaint (116, 10, 336, 72);
 
     // status screens only repaint when something changed
-    const int statusKey = (proc.isSidechainConnected() ? 1 : 0) + 2 * juce::roundToInt (proc.apvts.getRawParameterValue ("lookahead")->load())
+    const int statusKey = (proc.araView().bound ? 7777777 : 0) + (proc.isSidechainConnected() ? 1 : 0) + 2 * juce::roundToInt (proc.apvts.getRawParameterValue ("lookahead")->load())
                           + 200 * juce::roundToInt (proc.apvts.getRawParameterValue ("music")->load()) + 100000 * proc.getLatencySamples();
     if (statusKey != lastStatusKey) { lastStatusKey = statusKey; repaint (scArea); repaint (latArea); }
     if (++linkTick >= 15) { linkTick = 0; repaint (112, 92, 340, 16); }

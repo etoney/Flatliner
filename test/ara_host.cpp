@@ -283,6 +283,39 @@ int main (int argc, char** argv)
         }
     }
 
+    // playing in real time, when the DAW lets Flatliner read the clip only after playback was prepared:
+    // the clip must not start silent (the read-ahead has to start again once it can read)
+    {
+        plugin->releaseResources();
+        { const ARAEditGuard edit (dc); take.source->enableAudioSourceSamplesAccess (false); }
+        plugin->setNonRealtime (false);
+        plugin->prepareToPlay (SR, 512);
+        Thread::sleep (300);   // the DAW takes a moment before it lets the plugin read
+        { const ARAEditGuard edit (dc); take.source->enableAudioSourceSamplesAccess (true); }
+        for (int i = 0; i < 5; ++i) { MessageManager::getInstance()->runDispatchLoopUntil (10); dc.notifyModelUpdates(); }
+        AudioBuffer<float> rt (1, (int) (3 * SR));
+        rt.clear();
+        for (int pos = 0; pos + 512 <= rt.getNumSamples(); pos += 512)
+        {
+            block.setSize (1, 512, false, false, true); block.clear(); head.pos = pos;
+            plugin->processBlock (block, midi);
+            rt.copyFrom (0, pos, block, 0, 0, 512);
+            Thread::sleep (10);   // about real time (512 samples = 10.7 ms)
+            MessageManager::getInstance()->runDispatchLoopUntil (1);
+        }
+        int silentWords = 0, words2 = 0;
+        for (auto& w : words)
+        {
+            if (w.start < (int) (0.3 * SR) || w.end > (int) (2.9 * SR)) continue;
+            ++words2;
+            if (rmsDb (rt, w.start + 2000, w.end - 2000) < -80.0f) ++silentWords;
+        }
+        check (words2 > 0 && silentWords == 0, String::formatted ("real-time playback when the DAW allows reading only after it prepared playback: the first seconds play (%d of %d words silent)", silentWords, words2));
+        plugin->releaseResources();
+        plugin->setNonRealtime (true);
+        plugin->prepareToPlay (SR, 512);
+    }
+
     // a second take, removed while Flatliner is still reading it
     {
         MemorySource t2;

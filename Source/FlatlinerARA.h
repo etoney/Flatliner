@@ -19,6 +19,7 @@
 #include <set>
 
 class FlatDocumentController;
+class FlatRenderer;
 
 //==============================================================================
 // One read of one audio source, start to finish, off the DAW's threads
@@ -88,6 +89,12 @@ protected:
 
     juce::ARAPlaybackRenderer* doCreatePlaybackRenderer() noexcept override;
 
+public:
+    // the renderers (document thread): when a take can be read again, their read-ahead starts again
+    void addRenderer (FlatRenderer* r) { renderers.insert (r); }
+    void removeRenderer (FlatRenderer* r) { renderers.erase (r); }
+protected:
+
     // nothing of our own to store in the song: the analysis is read again from the audio, the knobs live
     // in each plugin's own state
     bool doRestoreObjectsFromStream (juce::ARAInputStream& input, const juce::ARARestoreObjectsFilter*) noexcept override { return ! input.failed(); }
@@ -109,6 +116,7 @@ private:
     void accessChanged (juce::ARAAudioSource* src, bool enable)
     {
         if (! enable) { cancel (src); return; }
+        reopenReaders (src);   // a read-ahead that started before the DAW allowed reading holds silence
         if (analysisFor (src) == nullptr) start (src);
     }
     void contentChanged (juce::ARAAudioSource* src, juce::ARAContentUpdateScopes scopes)
@@ -117,6 +125,7 @@ private:
         cancel (src);
         { const std::lock_guard<std::mutex> l (lock); analyses.erase (src); }
         ++analysisVersion;
+        reopenReaders (src);   // the old readers hold the old audio
         if (src->isSampleAccessEnabled()) start (src);
     }
     void propertiesChanged (juce::ARAAudioSource* src)
@@ -148,6 +157,9 @@ private:
             jobs.erase (it);
         }
     }
+
+    void reopenReaders (juce::ARAAudioSource* src);
+    std::set<FlatRenderer*> renderers;   // document thread only
 
     juce::ThreadPool pool { juce::ThreadPoolOptions{}.withThreadName ("Flatliner ARA").withNumberOfThreads (1) };
     std::map<juce::ARAAudioSource*, FlatAnalysisJob*> jobs;       // document thread only
@@ -197,8 +209,16 @@ inline juce::ThreadPoolJob::JobStatus FlatAnalysisJob::runJob()
 class FlatRenderer final : public juce::ARAPlaybackRenderer
 {
 public:
-    FlatRenderer (ARA::PlugIn::DocumentController* d, FlatDocumentController& dcIn) : juce::ARAPlaybackRenderer (d), dc (dcIn) {}
-    ~FlatRenderer() override { stopPlanner(); }
+    FlatRenderer (ARA::PlugIn::DocumentController* d, FlatDocumentController& dcIn) : juce::ARAPlaybackRenderer (d), dc (dcIn) { dc.addRenderer (this); }
+    ~FlatRenderer() override { dc.removeRenderer (this); stopPlanner(); dropSpareReaders(); }
+
+    // document thread: this take can be read now (again). New readers go to the audio thread, which swaps
+    // them in at the start of its next block; the old ones are freed off the audio thread.
+    void reopen (juce::ARAAudioSource* src)
+    {
+        if (! prepared || std::find (sources.begin(), sources.end(), src) == sources.end()) return;
+        delete pending.exchange (makeReaders().release());
+    }
 
     // the plugin's knobs, every block (audio thread)
     void setParams (const flat::Params& p)
@@ -214,34 +234,34 @@ public:
                         AlwaysNonRealtime alwaysNonRealtime) override
     {
         stopPlanner();
+        dropSpareReaders();
         sampleRate = sampleRateIn; maximumSamplesPerBlock = maxBlock; numChannels = numChannelsIn;
-        readers.clear();
         sources.clear();
-        const bool buffered = alwaysNonRealtime == AlwaysNonRealtime::no;
+        buffered = alwaysNonRealtime == AlwaysNonRealtime::no;
         for (auto* region : getPlaybackRegions())
         {
             auto* src = region->getAudioModification()->getAudioSource();
-            if (readers.count (src) > 0) continue;
-            sources.push_back (src);
-            auto r = std::make_unique<juce::ARAAudioSourceReader> (src);
-            if (buffered)
-                readers[src] = { std::make_unique<juce::BufferingAudioReader> (r.release(), *timeSlice, juce::jmax (4 * maxBlock, juce::roundToInt (2.0 * sampleRate))), true };
-            else
-                readers[src] = { std::move (r), false };
+            if (std::find (sources.begin(), sources.end(), src) == sources.end()) sources.push_back (src);
         }
+        readers = makeReaders();
+        prepared = true;
         sourceBuffer.setSize (8, maxBlock);
         mixBuffer.setSize (juce::jmax (1, numChannels), maxBlock);
         plans = std::make_shared<PlanSet>();
         startPlanner();
     }
 
-    void releaseResources() override { stopPlanner(); readers.clear(); }
+    void releaseResources() override { prepared = false; stopPlanner(); dropSpareReaders(); readers.reset(); }
 
     bool processBlock (juce::AudioBuffer<float>& buffer, juce::AudioProcessor::Realtime realtime,
                        const juce::AudioPlayHead::PositionInfo& positionInfo) noexcept override
     {
         const int numSamples = buffer.getNumSamples();
         const auto blockStart = positionInfo.getTimeInSamples().orFallback (0);
+        // new readers from the document thread (a take that can be read again): swap them in
+        if (retired.load() == nullptr)
+            if (auto* fresh = pending.exchange (nullptr)) { retired.store (readers.release()); readers.reset (fresh); }
+        if (readers == nullptr) { buffer.clear(); return true; }
         bool success = true, any = false;
         float outTarget;
         { const std::lock_guard<std::mutex> l (paramLock); outTarget = flat::dbToGain (wanted.outputDb); }
@@ -261,8 +281,8 @@ public:
                 if (range.isEmpty()) continue;
 
                 auto* src = region->getAudioModification()->getAudioSource();
-                auto it = readers.find (src);
-                if (it == readers.end() || std::abs (src->getSampleRate() - sampleRate) > 0.5) { success = false; continue; }   // Phase 1: same rate as the song
+                auto it = readers->find (src);
+                if (it == readers->end() || std::abs (src->getSampleRate() - sampleRate) > 0.5) { success = false; continue; }   // Phase 1: same rate as the song
                 if (it->second.buffered) static_cast<juce::BufferingAudioReader*> (it->second.reader.get())->setReadTimeout (realtime == juce::AudioProcessor::Realtime::no ? 100 : 0);
 
                 const int n = (int) range.getLength(), at = (int) (range.getStart() - blockStart);
@@ -343,6 +363,7 @@ private:
                         if (auto a = owner.dc.analysisFor (src)) (*set)[src] = std::make_shared<const flat::Plan> (flat::planRide (*a, p));
                     std::atomic_store (&owner.plans, std::shared_ptr<const PlanSet> (set));
                 }
+                delete owner.retired.exchange (nullptr);   // readers the audio thread swapped out
                 wait (40);
             }
         }
@@ -352,12 +373,30 @@ private:
     void stopPlanner() { if (planner != nullptr) { planner->stopThread (2000); planner.reset(); } }
 
     struct Reader { std::unique_ptr<juce::AudioFormatReader> reader; bool buffered = false; };
+    using ReaderMap = std::map<juce::ARAAudioSource*, Reader>;
+    std::unique_ptr<ReaderMap> makeReaders()
+    {
+        auto m = std::make_unique<ReaderMap>();
+        for (auto* src : sources)
+        {
+            auto r = std::make_unique<juce::ARAAudioSourceReader> (src);
+            if (buffered)
+                (*m)[src] = { std::make_unique<juce::BufferingAudioReader> (r.release(), *timeSlice, juce::jmax (4 * maximumSamplesPerBlock, juce::roundToInt (2.0 * sampleRate))), true };
+            else
+                (*m)[src] = { std::move (r), false };
+        }
+        return m;
+    }
+    void dropSpareReaders() { delete pending.exchange (nullptr); delete retired.exchange (nullptr); }
     struct SharedThread : juce::TimeSliceThread { SharedThread() : juce::TimeSliceThread ("Flatliner reader") { startThread(); } };
 
     FlatDocumentController& dc;
     juce::SharedResourcePointer<SharedThread> timeSlice;
-    std::map<juce::ARAAudioSource*, Reader> readers;
+    std::unique_ptr<ReaderMap> readers;                 // the audio thread's
+    std::atomic<ReaderMap*> pending { nullptr }, retired { nullptr };
     std::vector<juce::ARAAudioSource*> sources;
+    bool buffered = true;
+    std::atomic<bool> prepared { false };
     juce::AudioBuffer<float> sourceBuffer, mixBuffer;
     double sampleRate = 48000.0;
     int maximumSamplesPerBlock = 512, numChannels = 2;
@@ -370,6 +409,11 @@ private:
     std::atomic<const juce::ARAAudioSource*> playSource { nullptr };
     std::atomic<juce::int64> playPos { -1 };
 };
+
+inline void FlatDocumentController::reopenReaders (juce::ARAAudioSource* src)
+{
+    for (auto* r : renderers) r->reopen (src);
+}
 
 inline juce::ARAPlaybackRenderer* FlatDocumentController::doCreatePlaybackRenderer() noexcept
 {

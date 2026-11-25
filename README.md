@@ -2,13 +2,14 @@
 
 An auto leveler (VST3 / AU) by **Castle Danger Music Company**. *Level the Field.*
 
-Flatliner listens to the vocal and moves a virtual fader for you, pushing quiet words up and pulling loud ones down so the performance sits on one flat line.
+Flatliner listens to the track and levels it for you, pushing quiet passages up and pulling loud ones down so the performance sits on one flat line. Use it on a lead vocal, lead guitar, bass, voice-over or anything that jumps around.
 
-- **Target / Range / Speed:** the level to aim for, how far the fader may move, and how fast it moves (cuts are always faster than boosts)
-- **Gate:** the fader freezes below this level so breaths and room noise don't get pushed up
-- **Lookahead:** 0-50 ms; the audio is delayed while Flatliner listens early, so the fader is already moving when a phrase arrives (latency reported to the host)
-- **Music:** route the backing track to the sidechain and the vocal target rises with the music
-- **Extras:** live scrolling scope, fader gauge, VOICE / FADER / OUT meters, factory + user presets
+- **Target / Range / Speed:** the level to aim for, how far the level may move, and how fast it moves (cuts are always faster than boosts)
+- **Gate:** Flatliner holds below this level so breaths, hiss and room noise don't get pushed up
+- **Lookahead:** 0-50 ms; the audio is delayed while Flatliner listens early, so the level is already moving when a phrase arrives (latency reported to the host)
+- **Music:** route the backing track to the sidechain and the target rises with the music
+- **Extras:** live scrolling scope, gain gauge, input / gain / output meters, factory + user presets
+- **ARA:** apply Flatliner to the clip itself and it plans the leveling from the whole take, with no latency
 
 See `controls.txt` for every control and `readme.txt` for installing.
 

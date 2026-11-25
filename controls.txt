@@ -3,9 +3,10 @@
   Level the Field  //  Castle Danger Music Company
 ===============================================================================
 
-Flatliner is an auto leveler. It listens to your vocal and moves a
-virtual fader for you, pushing quiet words up and pulling loud ones down, so
-the performance sits on one flat line: the TARGET.
+Flatliner is an auto leveler. It listens to your track and levels it for
+you, pushing quiet passages up and pulling loud ones down, so the
+performance sits on one flat line: the TARGET. Use it on a lead vocal, a
+lead guitar, a bass, a voice-over or anything else that jumps around.
 
 Tip: double-click a knob to reset it. Double-click the value under a knob to
 type an exact number (e.g. "-18" for the target).
@@ -14,41 +15,42 @@ type an exact number (e.g. "-18" for the target).
 -------------------------------------------------------------------------------
 RIDE
 -------------------------------------------------------------------------------
-  RIDE          The fader moves by itself.
-  OFF           The fader is parked at 0 dB and Flatliner does nothing (the
-                OUTPUT trim still works).
+  RIDE          Flatliner levels the track by itself.
+  OFF           The level is held at 0 dB and Flatliner does nothing (the
+                OUTPUT trim still works). The button reads "FADER PARKED AT
+                0 DB".
 
 
 -------------------------------------------------------------------------------
 THE KNOBS
 -------------------------------------------------------------------------------
   TARGET        The level Flatliner aims for (measured as RMS, so it follows
-                how loud the vocal FEELS, not the peaks). Start around -18 dB,
-                then raise or lower it until the vocal sits where you want it
+                how loud the track FEELS, not the peaks). Start around -18 dB,
+                then raise or lower it until the track sits where you want it
                 in the mix. Used when SECTIONS is off.
 
   SECTIONS      (under TARGET, on by default) Flatliner aims at where the
-                vocal has been sitting for the last few seconds instead of one
+                track has been sitting for the last few seconds instead of one
                 level for the whole song. It still evens out loud and soft
-                words, but a chorus sung louder stays louder and a quiet verse
+                notes, but a chorus played louder stays louder and a quiet verse
                 stays quiet. THE LINE shows the moving SECTION line. Turn it
                 off for one fixed level (TARGET), e.g. a podcast or voice-over.
 
-  RANGE         The most the fader is allowed to move, up or down. Small
+  RANGE         The most the level is allowed to move, up or down. Small
                 (2-4 dB) = a gentle, invisible ride. Large (10-18 dB) =
                 flattens everything, including whispers and shouts.
 
-  SPEED         How fast the fader moves. Low = slow and natural, like a
+  SPEED         How fast the level moves. Low = slow and natural, like a
                 patient engineer. High = locked flat. Cuts always move faster
-                than boosts, like a human hand on a fader.
+                than boosts, the way an engineer would level it by hand.
 
-  GATE          Below this level the fader freezes where it is, so breaths,
-                room noise and the gaps between phrases are not pushed up.
-                If the fader pumps noise up in the pauses, raise the gate.
+  GATE          Below this level Flatliner holds where it is, so breaths,
+                hiss, room noise and the gaps between phrases are not pushed
+                up. If it pumps noise up in the pauses, raise the gate.
 
   LOOKAHEAD     Delays the audio (0-50 ms) while Flatliner listens to it
-                early, so the fader is already moving when a loud word or a
-                whisper arrives, instead of reacting after it. Flatliner tells
+                early, so the level is already moving when a loud or quiet
+                passage arrives, instead of reacting after it. Flatliner tells
                 your DAW about the delay, and the DAW lines everything up.
                 Set it to 0 (OFF) for live tracking, where you can't have any
                 latency. The LATENCY screen shows what is being reported.
@@ -56,9 +58,9 @@ THE KNOBS
                 latency change when you restart playback.
 
   MUSIC         Needs your backing track routed to Flatliner's SIDECHAIN
-                input. The louder the music gets, the higher the vocal TARGET
-                is pushed (up to +12 dB at 100%), so the vocal rides on top
-                of the mix instead of getting buried. 0% = ignore the music.
+                input. The louder the music gets, the higher the TARGET is
+                pushed (up to +12 dB at 100%), so the track sits on top of
+                the mix instead of getting buried. 0% = ignore the music.
                 The MUSIC LINK screen shows whether a sidechain is connected.
 
   OUTPUT        Final output trim (-12 to +12 dB).
@@ -68,14 +70,15 @@ THE KNOBS
 THE SCREENS
 -------------------------------------------------------------------------------
   THE LINE      A scrolling scope of the last ten seconds.
-                  dim trace    = the vocal as it comes in
-                  bright trace = after the fader (this should be flat)
+                  dim trace    = the track as it comes in
+                  bright trace = after leveling (this should be flat)
                   yellow dashes = TARGET      shaded band = RANGE
                   grey dashes   = GATE
-  FADER GAUGE   The round gauge in the header. Needle left = cutting,
-                right = boosting, centre = 0 dB.
-  METERS        VOICE in, OUT, and the FADER (cuts hang down in red, boosts
-                climb up in cream), plus a read-out of the fader in dB.
+  GAIN GAUGE    The round gauge in the header (marked FADER). Needle
+                left = cutting, right = boosting, centre = 0 dB.
+  METERS        Input (marked VOICE), OUT, and the gain Flatliner is applying
+                (marked FADER: cuts hang down in red, boosts climb up in
+                cream), plus a read-out of that gain in dB.
   PRESETS       Factory presets and your own. Your presets are saved in
                   macOS:    ~/Library/Application Support/Castle Danger/Flatliner/Presets
                   Windows:  %APPDATA%\Castle Danger\Flatliner\Presets
@@ -84,11 +87,12 @@ THE SCREENS
 -------------------------------------------------------------------------------
 GETTING STARTED
 -------------------------------------------------------------------------------
-  1. Put Flatliner on the vocal track, early in the chain (before the
+  1. Put Flatliner on the track, early in the chain (before the
      compressor and effects, so they get an even signal).
-  2. Pick "Lead Vocal: Natural" and play the loudest and quietest parts.
+  2. Pick a preset that fits the track (e.g. "Lead Vocal: Natural" on a
+     vocal) and play the loudest and quietest parts.
   3. Adjust TARGET until the bright trace sits where you want it.
-  4. If it feels too busy, lower RANGE or SPEED. If whispers still get lost,
+  4. If it feels too busy, lower RANGE or SPEED. If quiet parts still get lost,
      raise RANGE. If it lifts the noise between phrases, raise GATE.
 
 
@@ -96,7 +100,7 @@ GETTING STARTED
 ARA: FLATLINER ON THE CLIP ITSELF
 -------------------------------------------------------------------------------
   In a DAW with ARA (Studio Pro, Logic, Cubase, Reaper and others), apply
-  Flatliner to the vocal clip instead of inserting it on the track. In Studio
+  Flatliner to the clip instead of inserting it on the track. In Studio
   Pro: drag Flatliner from the browser onto the clip (or pick it from the
   clip's right-click menu).
 
@@ -104,10 +108,10 @@ ARA: FLATLINER ON THE CLIP ITSELF
   without playing), and plans the ride with the whole take in view:
     - SECTIONS are centred on each moment (the 3 s before AND after), and a
       section change is found where it happens, so a chorus has its level
-      from its first word.
-    - Every move is planned ahead: the fader is already there when the word
-      starts. No lookahead, no latency.
-    - Breaths and gaps are known: the fader holds through them and glides to
+      from its first note.
+    - Every move is planned ahead: the level is already there when the
+      phrase starts. No lookahead, no latency.
+    - Breaths and gaps are known: the level holds through them and glides to
       the next phrase's level just before it starts. It never pumps on
       silence.
   The knobs work as usual (TARGET, RANGE, SPEED, GATE, SECTIONS, RIDE,
@@ -115,13 +119,13 @@ ARA: FLATLINER ON THE CLIP ITSELF
   works in live mode only (on the clip there's no sidechain).
 
   THE LINE shows the whole take: dim = the take, bright = after the planned
-  fader, dashed = where it aims, and a marker where playback is. It says
+  leveling, dashed = where it aims, and a marker where playback is. It says
   READING THE TAKE... until the take has been read. The status screens say
   ARA: ON THE CLIP and NO LATENCY.
 
   Edit the clip (comp, trim, move) and Flatliner reads it again by itself.
   A clip at a different sample rate from the song plays untouched for now.
-  ARA works on clips, so a vocal BUS still needs Flatliner in live mode.
+  ARA works on clips, so a BUS still needs Flatliner in live mode.
   In a DAW without ARA (Ableton Live), Flatliner is always in live mode.
 
 -------------------------------------------------------------------------------
@@ -134,12 +138,12 @@ LINKED TO THE MASTER
   parts, and the gaps between phrases) from The Master's RESET onwards. In
   MY PLUGINS mode, The Master finds which track it's on (by track name, or by
   matching it to The Servant on the same track) and on APPLY sets:
-    SECTIONS on, so the vocal keeps each section's level
+    SECTIONS on, so the track keeps each section's level
     TARGET   where the lead already sits on average (used if SECTIONS is off)
     RANGE    from the measured swing and the genre, at most 8 dB: it only
-             evens out the words
+             evens out the phrases
     SPEED    from the genre
-    GATE     between the gaps and the quietest words
+    GATE     between the gaps and the quietest phrases
   RIDE goes on; LOOKAHEAD, MUSIC and OUTPUT are left as you set them. The
   preset box shows "Set by The Master" and every change is explained in The
   Master's WHAT I CHANGED & WHY log. Turn anything afterwards.

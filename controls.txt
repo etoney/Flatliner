@@ -125,7 +125,8 @@ ARA: FLATLINER ON THE CLIP ITSELF
 
   Edit the clip (comp, trim, move) and Flatliner reads it again by itself.
   A clip at a different sample rate from the song plays untouched for now.
-  ARA works on clips, so a BUS still needs Flatliner in live mode.
+  Flatliner goes on tracks, not buses: a bus has no clip for ARA. (One
+  still on a bus works in live mode; The Master suggests moving it.)
   In a DAW without ARA (Ableton Live), Flatliner is always in live mode.
 
 -------------------------------------------------------------------------------
@@ -144,15 +145,23 @@ LINKED TO THE MASTER
              evens out the phrases
     SPEED    from the genre
     GATE     between the gaps and the quietest phrases
-  RIDE goes on; LOOKAHEAD, MUSIC and OUTPUT are left as you set them. The
+  RIDE goes on; LOOKAHEAD and MUSIC are left as you set them, and OUTPUT
+  too unless the track is one of several (below). The
   preset box shows "Set by The Master" and every change is explained in The
   Master's WHAT I CHANGED & WHY log. Turn anything afterwards.
 
   Without Flatliner, The Master still tells you when your lead jumps around
-  enough to need it: the lead vocal, the backing vocals (on their own bus),
-  and the lead guitar.
+  enough to need it, on each track of the lead vocal, the backing vocals
+  (a gentle ride, at most 3 dB) and the lead guitar.
 
-  On a LEAD GUITAR (by The Servant's ROLE, or a bus named "Lead GTR Bus") The
+  SEVERAL TRACKS, SET TOGETHER: when a part is on several tracks, each gets
+  its own Flatliner and The Master sets them together. The track that plays
+  the most is the main one. A track that takes turns with it (a chorus on its
+  own track) gets an OUTPUT that brings it to the main track's level, so the
+  parts meet. A double that sings along gets the main track's RANGE and
+  SPEED, so they move as one, and keeps its balance (The Servant's TRIM).
+
+  On a LEAD GUITAR (by The Servant's ROLE) The
   Master sets it up for a solo: a slower SPEED than on a vocal (held notes
   and feedback ring out without pumping), RANGE at most 6 dB (the solo keeps
   its shape), and GATE above the amp's hiss.

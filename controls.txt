@@ -145,7 +145,13 @@ LINKED TO THE MASTER
   Master's WHAT I CHANGED & WHY log. Turn anything afterwards.
 
   Without Flatliner, The Master still tells you when your lead jumps around
-  enough to need it.
+  enough to need it: the lead vocal, the backing vocals (on their own bus),
+  and the lead guitar.
+
+  On a LEAD GUITAR (by The Servant's ROLE, or a bus named "Lead GTR Bus") The
+  Master sets it up for a solo: a slower SPEED than on a vocal (held notes
+  and feedback ring out without pumping), RANGE at most 6 dB (the solo keeps
+  its shape), and GATE above the amp's hiss.
 
 REBEL  (next to the link lamp)
   On: The Master keeps its hands off this plugin. Nothing it sends changes a setting here; it still

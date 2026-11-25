@@ -46,9 +46,14 @@ SOFTWARE.
 3. ARA SDK (Celemony)
 -------------------------------------------------------------------------------
 ARA (Audio Random Access) lets Flatliner be applied to a clip and read the whole
-take. Flatliner uses the ARA SDK (ARA_API and ARA_Library), copyright Celemony
-Software GmbH, available under the Apache License 2.0:
-ARA is a trademark of Celemony Software GmbH. The license text follows.
+take. Flatliner uses the ARA SDK (ARA_API and ARA_Library), unmodified, under
+the Apache License 2.0. Its copyright notice:
+
+  Copyright (c) 2012-2024, Celemony Software GmbH, All Rights Reserved.
+  Published under the Apache 2.0 license.
+
+ARA Audio Random Access is a trademark of Celemony Software GmbH. Flatliner is
+not affiliated with or endorsed by Celemony. The license text follows.
 
                                  Apache License
                            Version 2.0, January 2004
